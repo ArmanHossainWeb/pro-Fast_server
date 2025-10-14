@@ -4,7 +4,7 @@ const PORT = process.env.PORT || 5000;
 
 const cors = require("cors");
 const dotenv = require("dotenv");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 dotenv.config();
 
@@ -41,14 +41,13 @@ async function run() {
     });
 
     // parcels api
-    // GET: All parcels OR parcels by user (created_by) , shorted by latest
     // GET: All parcels OR parcels by user (created_by), sorted by latest
     app.get("/parcels", async (req, res) => {
       try {
         const userEmail = req.query.email;
         const query = userEmail ? { created_by: userEmail } : {};
         const options = {
-          sort: { createdAt: -1 }, 
+          sort: { createdAt: -1 }
         };
 
         const parcels = await parcelCollection.find(query, options).toArray();
@@ -70,6 +69,21 @@ async function run() {
         res.status(500).send({ message: "Failed to create parcel" });
       }
     });
+
+
+    // Delete a parcel 
+     app.delete('/parcels/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+
+                const result = await parcelCollection.deleteOne({ _id: new ObjectId(id) });
+
+                res.send(result);
+            } catch (error) {
+                console.error('Error deleting parcel:', error);
+                res.status(500).send({ message: 'Failed to delete parcel' });
+            }
+        });
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. Successfully connected to MongoDB!");
