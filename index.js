@@ -47,7 +47,7 @@ async function run() {
         const userEmail = req.query.email;
         const query = userEmail ? { created_by: userEmail } : {};
         const options = {
-          sort: { createdAt: -1 }
+          sort: { createdAt: -1 },
         };
 
         const parcels = await parcelCollection.find(query, options).toArray();
@@ -55,6 +55,26 @@ async function run() {
       } catch (error) {
         console.error("Error fetching parcels:", error);
         res.status(500).send({ message: "Failed to get parcels" });
+      }
+    });
+
+    // GET: Get a spacific parcel by Id
+    app.get("/parcels/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const parcel = await parcelCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!parcel) {
+          return res.status(404).json({ message: "Parcel not found" });
+        }
+
+        res.status(200).json(parcel);
+      } catch (error) {
+        res
+          .status(500)
+          .json({ message: "Error fetching parcel", error: error.message });
       }
     });
 
@@ -70,20 +90,34 @@ async function run() {
       }
     });
 
+    // Delete a parcel
+    app.delete("/parcels/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
 
-    // Delete a parcel 
-     app.delete('/parcels/:id', async (req, res) => {
-            try {
-                const id = req.params.id;
-
-                const result = await parcelCollection.deleteOne({ _id: new ObjectId(id) });
-
-                res.send(result);
-            } catch (error) {
-                console.error('Error deleting parcel:', error);
-                res.status(500).send({ message: 'Failed to delete parcel' });
-            }
+        const result = await parcelCollection.deleteOne({
+          _id: new ObjectId(id),
         });
+
+        res.send(result);
+      } catch (error) {
+        console.error("Error deleting parcel:", error);
+        res.status(500).send({ message: "Failed to delete parcel" });
+      }
+    });
+
+    app.post("/create-payment-intent", async (req, res) => {
+      try {
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: 1000, // amount in cents ($10)
+          currency: "usd",
+          payment_method_types: ["card"],
+        });
+        res.json({ clientSecret: paymentIntent.client_secret });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. Successfully connected to MongoDB!");
