@@ -52,13 +52,18 @@ async function run() {
     app.get("/parcels/:id", async (req, res) => {
       try {
         const id = req.params.id;
-        const parcel = await parcelCollection.findOne({ _id: new ObjectId(id) });
+        const parcel = await parcelCollection.findOne({
+          _id: new ObjectId(id),
+        });
 
-        if (!parcel) return res.status(404).json({ message: "Parcel not found" });
+        if (!parcel)
+          return res.status(404).json({ message: "Parcel not found" });
 
         res.status(200).json(parcel);
       } catch (error) {
-        res.status(500).json({ message: "Error fetching parcel", error: error.message });
+        res
+          .status(500)
+          .json({ message: "Error fetching parcel", error: error.message });
       }
     });
 
@@ -78,13 +83,39 @@ async function run() {
     app.delete("/parcels/:id", async (req, res) => {
       try {
         const id = req.params.id;
-        const result = await parcelCollection.deleteOne({ _id: new ObjectId(id) });
+        const result = await parcelCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
         res.send(result);
       } catch (error) {
         console.error("Error deleting parcel:", error);
         res.status(500).send({ message: "Failed to delete parcel" });
       }
     });
+
+    app.post("/tracking", async (req, res) => {
+      const {
+        tracking_id,
+        parcel_id,
+        status,
+        message,
+        updated_by = "",
+      } = req.body;
+
+      const log = {
+        tracking_id,
+        parcel_id: parcel_id ? new ObjectId(parcel_id) : undefined,
+        status,
+        message,
+        time: new Date(),
+        updated_by,
+      };
+
+      const result = await trackingCollection.insertOne(log);
+      res.send({ success: true, insertedId: result.insertedId });
+    });
+
+    
 
     // GET payments
     app.get("/payments", async (req, res) => {
@@ -93,7 +124,9 @@ async function run() {
         const query = userEmail ? { email: userEmail } : {};
         const options = { sort: { paid_at: -1 } };
 
-        const payments = await paymentsCollection.find(query, options).toArray();
+        const payments = await paymentsCollection
+          .find(query, options)
+          .toArray();
         res.send(payments);
       } catch (error) {
         console.error("Error fetching payment history:", error);
@@ -104,7 +137,8 @@ async function run() {
     // POST payment: mark parcel paid + save payment
     app.post("/payments", async (req, res) => {
       try {
-        const { parcelId, email, amount, paymentMethod, transactionId } = req.body;
+        const { parcelId, email, amount, paymentMethod, transactionId } =
+          req.body;
 
         // Update parcel payment_status
         const updateResult = await parcelCollection.updateOne(
@@ -113,7 +147,9 @@ async function run() {
         );
 
         if (updateResult.modifiedCount === 0) {
-          return res.status(404).send({ message: "Parcel not found or already paid" });
+          return res
+            .status(404)
+            .send({ message: "Parcel not found or already paid" });
         }
 
         // Insert payment record
