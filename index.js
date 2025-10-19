@@ -30,8 +30,25 @@ async function run() {
     await client.connect();
 
     const db = client.db("parcelDB");
+    const usersCollection = db.collection("users")
     const parcelCollection = db.collection("parcels");
     const paymentsCollection = db.collection("payments");
+
+
+
+      // users api 
+      app.post("/users", async (req, res) => {
+        const email = req.body.email;
+        const userExists = await usersCollection.findOne({ email })
+        if(userExists){
+         return res.status(200).send({ message: "user already exists ", 
+          inserted: false
+         });
+        }
+        const user = req.body;
+        const result = await usersCollection.insertOne(user)
+        res.send(result)
+      })
 
     // GET all parcels OR by user, latest first
     app.get("/parcels", async (req, res) => {
