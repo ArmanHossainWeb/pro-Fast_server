@@ -41,6 +41,7 @@ async function run() {
         const email = req.body.email;
         const userExists = await usersCollection.findOne({ email })
         if(userExists){
+          // update last log in 
          return res.status(200).send({ message: "user already exists ", 
           inserted: false
          });
