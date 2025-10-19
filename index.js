@@ -55,6 +55,7 @@ async function run() {
     app.get("/parcels", async (req, res) => {
       try {
         const userEmail = req.query.email;
+        
         const query = userEmail ? { created_by: userEmail } : {};
         const options = { sort: { createdAt: -1 } };
 
