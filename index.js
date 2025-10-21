@@ -1,11 +1,21 @@
 // server.js
 const express = require("express");
+const admin = require("firebase-admin");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 const cors = require("cors");
 const dotenv = require("dotenv");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+
+
+
+const serviceAccount = require("./firebase_admin_key.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
 
 dotenv.config();
 
@@ -35,6 +45,31 @@ async function run() {
     const paymentsCollection = db.collection("payments");
 
 
+    // custom middleware 
+    const verifyFBToken = async (req, res, next) => {
+      const authHeader = req.headers.authorization;
+      if(!authHeader){
+       return res.status(401).send({message: "unauthrized access"})
+      }
+      const token = authHeader.split(" ")[1];
+      if(!token){
+        return res.status(401).send({message: "unauthrized access"})
+      }
+      // verify the token 
+      try{
+        const decoded = await admin.auth().verifyIdToken(token);
+        req.decoded = decoded
+        next();
+      }
+      catch(error){
+        return res.status(403).send({message: "unauthrized access"})
+      }
+
+
+      
+    }
+
+
 
       // users api 
       app.post("/users", async (req, res) => {
@@ -52,7 +87,7 @@ async function run() {
       })
 
     // GET all parcels OR by user, latest first
-    app.get("/parcels", async (req, res) => {
+    app.get("/parcels", verifyFBToken,  async (req, res) => {
       try {
         const userEmail = req.query.email;
         
@@ -137,9 +172,13 @@ async function run() {
     
 
     // GET payments
-    app.get("/payments", async (req, res) => {
+    app.get("/payments", verifyFBToken , async (req, res) => {
       try {
         const userEmail = req.query.email;
+        console.log("decoded", req.decoded)
+        if(req.decoded.email !== userEmail){
+          return res.status(403).send({message: "forbidden access"})
+        }
         const query = userEmail ? { email: userEmail } : {};
         const options = { sort: { paid_at: -1 } };
 
